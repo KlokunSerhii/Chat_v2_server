@@ -48,10 +48,13 @@ io.on("connection", async (socket) => {
   socket.emit("last-messages", lastMessages);
   socket.broadcast.emit("user-joined", username);
 
+  // Оновлюємо список онлайн користувачів для всіх
+  io.emit("online-users", Array.from(users.values()));
+
   socket.on("message", async (data) => {
     const typingUser = users.get(socket.id);
 
-    // Сповіщаємо інших, що користувач друкує
+    // Повідомляємо інших, що користувач друкує
     socket.broadcast.emit("user-typing", typingUser);
 
     // Імітація затримки перед надсиланням
@@ -73,11 +76,12 @@ io.on("connection", async (socket) => {
     }, 1000); // 1 секунда затримки
   });
 
-  socket.emit("online-users", usersArray);
-
   socket.on("disconnect", () => {
     io.emit("user-left", users.get(socket.id));
     users.delete(socket.id);
+
+    // Оновлюємо список онлайн користувачів після відключення
+    io.emit("online-users", Array.from(users.values()));
   });
 });
 
