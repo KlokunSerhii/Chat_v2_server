@@ -5,7 +5,7 @@ import mongoose from "mongoose";
 import cors from "cors";
 
 const PORT = 3001;
-const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/chatdb"; // можеш винести в .env
+const MONGO_URI = "mongodb://localhost:27017/chatdb";
 
 const app = express();
 app.use(cors());
@@ -23,73 +23,63 @@ const messageSchema = new mongoose.Schema({
 });
 
 const Message = mongoose.model("Message", messageSchema);
+
 const users = new Map();
 
-// 📌 Підключення до MongoDB, запуск серверу ПІСЛЯ підключення
 mongoose.connect(MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
 
-mongoose.connection.on("error", (err) => {
-  console.error("❌ MongoDB connection error:", err);
+mongoose.connection.once("open", () => {
+  console.log("MongoDB connected");
 });
 
-mongoose.connection.once("open", () => {
-  console.log("✅ MongoDB connected");
+io.on("connection", async (socket) => {
+  const username = socket.handshake.query.username || "Гість";
+  users.set(socket.id, username);
 
-  io.on("connection", async (socket) => {
-    const username = socket.handshake.query.username || "Гість";
-    users.set(socket.id, username);
+  const lastMessages = await Message.find()
+    .sort({ timestamp: -1 })
+    .limit(50);
+  lastMessages.reverse();
 
-    try {
-      const lastMessages = await Message.find()
-        .sort({ timestamp: -1 })
-        .limit(50);
-      lastMessages.reverse();
+  socket.emit("last-messages", lastMessages);
+  socket.broadcast.emit("user-joined", username);
 
-      socket.emit("last-messages", lastMessages);
-    } catch (err) {
-      console.error("❌ Error fetching messages:", err.message);
-    }
+  socket.on("message", async (data) => {
+    const typingUser = users.get(socket.id);
 
-    socket.broadcast.emit("user-joined", username);
+    // Сповіщаємо інших, що користувач друкує
+    socket.broadcast.emit("user-typing", typingUser);
 
-    socket.on("message", async (data) => {
-      const typingUser = users.get(socket.id);
+    // Імітація затримки перед надсиланням
+    setTimeout(async () => {
+      const savedMsg = new Message({
+        sender: "user",
+        text: data.text,
+        timestamp: new Date(),
+        username: typingUser,
+      });
+      await savedMsg.save();
 
-      socket.broadcast.emit("user-typing", typingUser);
-
-      setTimeout(async () => {
-        try {
-          const savedMsg = new Message({
-            sender: "user",
-            text: data.text,
-            timestamp: new Date(),
-            username: typingUser,
-          });
-          await savedMsg.save();
-
-          io.emit("message", {
-            sender: "user",
-            text: data.text,
-            timestamp: savedMsg.timestamp,
-            username: typingUser,
-          });
-        } catch (err) {
-          console.error("❌ Failed to save message:", err.message);
-        }
-      }, 1000);
-    });
-
-    socket.on("disconnect", () => {
-      io.emit("user-left", users.get(socket.id));
-      users.delete(socket.id);
-    });
+      io.emit("message", {
+        sender: "user",
+        text: data.text,
+        timestamp: savedMsg.timestamp,
+        username: typingUser,
+      });
+    }, 1000); // 1 секунда затримки
   });
 
-  // Запускаємо сервер тільки після успішного підключення до бази
-  server.listen(PORT, () => {
-    console.log(`🚀 Socket.IO server running on port ${PORT}`);
+  socket.emit("online-users", usersArray);
+
+  socket.on("disconnect", () => {
+    io.emit("user-left", users.get(socket.id));
+    users.delete(socket.id);
   });
+});
+
+server.listen(PORT, () => {
+  console.log(`Socket.IO server running on port ${PORT}`);
 });
