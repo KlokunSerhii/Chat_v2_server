@@ -57,7 +57,16 @@ io.on("connection", async (socket) => {
     .limit(50);
   lastMessages.reverse();
 
-  socket.emit("last-messages", lastMessages);
+  socket.emit(
+    "last-messages",
+    lastMessages.map((msg) => ({
+      text: msg.text,
+      sender: msg.sender,
+      timestamp: msg.timestamp,
+      username: msg.username,
+      avatar: msg.avatar, // має бути тут
+    }))
+  );
   socket.emit("online-users", usersArray);
   socket.broadcast.emit("user-joined", username);
 
