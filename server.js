@@ -26,10 +26,7 @@ const Message = mongoose.model("Message", messageSchema);
 
 const users = new Map();
 
-mongoose.connect(MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
+mongoose.connect(MONGO_URI);
 
 mongoose.connection.once("open", () => {
   console.log("MongoDB connected");
