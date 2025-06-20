@@ -73,7 +73,7 @@ io.on("connection", async (socket) => {
   socket.on("message", async (data) => {
     // Передається при emit з клієнта
     const { text, username: name, avatar } = data;
-
+    console.log("⌨️  отримано data від клієнта:", data);
     // Збережемо в БД разом з avatar
     const savedMsg = new Message({
       sender: "user",
