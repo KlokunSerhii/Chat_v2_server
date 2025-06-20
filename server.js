@@ -5,7 +5,8 @@ import mongoose from "mongoose";
 import cors from "cors";
 
 const PORT = 3001;
-const MONGO_URI = "mongodb://localhost:27017/chatdb";
+const MONGO_URI =
+  process.env.MONGO_URI || "mongodb://localhost:27017/chatdb";
 
 const app = express();
 app.use(cors());
