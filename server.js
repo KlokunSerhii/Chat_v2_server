@@ -21,11 +21,10 @@ const messageSchema = new mongoose.Schema({
   text: String,
   timestamp: { type: Date, default: Date.now },
   username: String,
+  avatar: String,
 });
 
 const Message = mongoose.model("Message", messageSchema);
-
-// Користувачі: socketId => { username, avatar }
 const users = new Map();
 
 mongoose.connect(MONGO_URI, {
@@ -33,48 +32,33 @@ mongoose.connect(MONGO_URI, {
   useUnifiedTopology: true,
 });
 
-mongoose.connection.once("open", () => {
-  console.log("✅ MongoDB connected");
-});
-
 io.on("connection", async (socket) => {
   const username = socket.handshake.query.username || "Гість";
-
-  // Генеруємо унікальний аватар на основі username
-  const avatar = `https://i.pravatar.cc/150?u=${encodeURIComponent(
-    username
-  )}`;
-
+  const avatar = `https://api.dicebear.com/7.x/thumbs/svg?seed=${username}`;
   users.set(socket.id, { username, avatar });
 
-  // Віддаємо останні повідомлення
   const lastMessages = await Message.find()
     .sort({ timestamp: -1 })
     .limit(50);
-  socket.emit("last-messages", lastMessages.reverse());
+  lastMessages.reverse();
+  socket.emit("last-messages", lastMessages);
 
-  // Повідомлення про нове підключення
   socket.broadcast.emit("user-joined", username);
 
-  // Відправляємо оновлений список онлайн
   io.emit("online-users", Array.from(users.values()));
 
   socket.on("message", async (data) => {
-    const typingUser = users.get(socket.id);
+    const userData = users.get(socket.id);
 
-    socket.broadcast.emit(
-      "user-typing",
-      typingUser?.username || "Користувач"
-    );
+    socket.broadcast.emit("user-typing", userData.username);
 
     setTimeout(async () => {
-      const userData = users.get(socket.id);
       const savedMsg = new Message({
         sender: "user",
         text: data.text,
         timestamp: new Date(),
         username: userData.username,
-        avatar: userData.avatar, // додаємо аватар
+        avatar: userData.avatar,
       });
       await savedMsg.save();
 
@@ -82,7 +66,8 @@ io.on("connection", async (socket) => {
         sender: "user",
         text: data.text,
         timestamp: savedMsg.timestamp,
-        username: typingUser?.username || "Користувач",
+        username: userData.username,
+        avatar: userData.avatar,
       });
     }, 1000);
   });
@@ -91,12 +76,12 @@ io.on("connection", async (socket) => {
     const user = users.get(socket.id);
     if (user) {
       io.emit("user-left", user.username);
-      users.delete(socket.id);
-      io.emit("online-users", Array.from(users.values()));
     }
+    users.delete(socket.id);
+    io.emit("online-users", Array.from(users.values()));
   });
 });
 
 server.listen(PORT, () => {
-  console.log(`🚀 Socket.IO server running on port ${PORT}`);
+  console.log(`Socket.IO server running on port ${PORT}`);
 });
