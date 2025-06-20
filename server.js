@@ -25,6 +25,7 @@ const messageSchema = new mongoose.Schema({
 
 const Message = mongoose.model("Message", messageSchema);
 
+// Користувачі: socketId => { username, avatar }
 const users = new Map();
 
 mongoose.connect(MONGO_URI, {
@@ -33,37 +34,45 @@ mongoose.connect(MONGO_URI, {
 });
 
 mongoose.connection.once("open", () => {
-  console.log("MongoDB connected");
+  console.log("✅ MongoDB connected");
 });
 
 io.on("connection", async (socket) => {
   const username = socket.handshake.query.username || "Гість";
-  users.set(socket.id, username);
 
+  // Генеруємо унікальний аватар на основі username
+  const avatar = `https://i.pravatar.cc/150?u=${encodeURIComponent(
+    username
+  )}`;
+
+  users.set(socket.id, { username, avatar });
+
+  // Віддаємо останні повідомлення
   const lastMessages = await Message.find()
     .sort({ timestamp: -1 })
     .limit(50);
-  lastMessages.reverse();
+  socket.emit("last-messages", lastMessages.reverse());
 
-  socket.emit("last-messages", lastMessages);
+  // Повідомлення про нове підключення
   socket.broadcast.emit("user-joined", username);
 
-  // Оновлюємо список онлайн користувачів для всіх
+  // Відправляємо оновлений список онлайн
   io.emit("online-users", Array.from(users.values()));
 
   socket.on("message", async (data) => {
     const typingUser = users.get(socket.id);
 
-    // Повідомляємо інших, що користувач друкує
-    socket.broadcast.emit("user-typing", typingUser);
+    socket.broadcast.emit(
+      "user-typing",
+      typingUser?.username || "Користувач"
+    );
 
-    // Імітація затримки перед надсиланням
     setTimeout(async () => {
       const savedMsg = new Message({
         sender: "user",
         text: data.text,
         timestamp: new Date(),
-        username: typingUser,
+        username: typingUser?.username || "Користувач",
       });
       await savedMsg.save();
 
@@ -71,20 +80,21 @@ io.on("connection", async (socket) => {
         sender: "user",
         text: data.text,
         timestamp: savedMsg.timestamp,
-        username: typingUser,
+        username: typingUser?.username || "Користувач",
       });
-    }, 1000); // 1 секунда затримки
+    }, 1000);
   });
 
   socket.on("disconnect", () => {
-    io.emit("user-left", users.get(socket.id));
-    users.delete(socket.id);
-
-    // Оновлюємо список онлайн користувачів після відключення
-    io.emit("online-users", Array.from(users.values()));
+    const user = users.get(socket.id);
+    if (user) {
+      io.emit("user-left", user.username);
+      users.delete(socket.id);
+      io.emit("online-users", Array.from(users.values()));
+    }
   });
 });
 
 server.listen(PORT, () => {
-  console.log(`Socket.IO server running on port ${PORT}`);
+  console.log(`🚀 Socket.IO server running on port ${PORT}`);
 });
