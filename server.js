@@ -21,7 +21,7 @@ const messageSchema = new mongoose.Schema({
   text: String,
   timestamp: { type: Date, default: Date.now },
   username: String,
-  avatar: String, // додали поле для аватара
+  avatar: String, // ← додали
 });
 
 const Message = mongoose.model("Message", messageSchema);
