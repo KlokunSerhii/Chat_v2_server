@@ -41,9 +41,11 @@ mongoose.connection.once("open", () => {
 io.on("connection", async (socket) => {
   const username = socket.handshake.query.username || "Гість";
   // Створюємо avatar URL з username (seed)
-  const avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
-    username
-  )}`;
+  const avatar =
+    socket.handshake.query.avatar ||
+    `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
+      username
+    )}`;
 
   // Зберігаємо в users обʼєкт із username + avatar
   users.set(socket.id, { username, avatar });
