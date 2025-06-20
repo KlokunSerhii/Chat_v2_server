@@ -71,22 +71,26 @@ io.on("connection", async (socket) => {
   socket.broadcast.emit("user-joined", username);
 
   socket.on("message", async (data) => {
-    // data має містити text, username, avatar
+    // Передається при emit з клієнта
+    const { text, username: name, avatar } = data;
+
+    // Збережемо в БД разом з avatar
     const savedMsg = new Message({
       sender: "user",
-      text: data.text,
+      text,
       timestamp: new Date(),
-      username: data.username,
-      avatar: data.avatar,
+      username: name,
+      avatar,
     });
     await savedMsg.save();
 
+    // Відправимо всім нове повідомлення з avatar
     io.emit("message", {
       sender: "user",
-      text: data.text,
+      text,
       timestamp: savedMsg.timestamp,
-      username: data.username,
-      avatar: data.avatar,
+      username: name,
+      avatar,
     });
   });
 
