@@ -68,11 +68,13 @@ io.on("connection", async (socket) => {
     );
 
     setTimeout(async () => {
+      const userData = users.get(socket.id);
       const savedMsg = new Message({
         sender: "user",
         text: data.text,
         timestamp: new Date(),
-        username: typingUser?.username || "Користувач",
+        username: userData.username,
+        avatar: userData.avatar, // додаємо аватар
       });
       await savedMsg.save();
 
