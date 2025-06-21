@@ -5,8 +5,7 @@ import mongoose from "mongoose";
 import cors from "cors";
 
 const PORT = 3001;
-const MONGO_URI =
-  process.env.MONGO_URI || "mongodb://localhost:27017/chatdb";
+const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/chatdb";
 
 const app = express();
 app.use(cors());
@@ -16,17 +15,18 @@ const io = new Server(server, {
   cors: { origin: "*" },
 });
 
+// Оновлена схема — додано поле image (Base64-рядок або null)
 const messageSchema = new mongoose.Schema({
   sender: String,
   text: String,
   timestamp: { type: Date, default: Date.now },
   username: String,
-  avatar: String, // ← додали
+  avatar: String,
+  image: { type: String, default: null },  // ← додано
 });
 
 const Message = mongoose.model("Message", messageSchema);
 
-// Map зберігатиме user info, не просто username
 const users = new Map();
 
 mongoose.connect(MONGO_URI, {
@@ -40,20 +40,15 @@ mongoose.connection.once("open", () => {
 
 io.on("connection", async (socket) => {
   const username = socket.handshake.query.username || "Гість";
-  // Створюємо avatar URL з username (seed)
   const avatar =
     socket.handshake.query.avatar ||
-    `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
-      username
-    )}`;
+    `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(username)}`;
 
-  // Зберігаємо в users обʼєкт із username + avatar
   users.set(socket.id, { username, avatar });
 
-  // Віддаємо масив обʼєктів користувачів
   const usersArray = Array.from(users.values());
 
-  // Надсилаємо останні повідомлення
+  // Завантажуємо останні повідомлення з урахуванням поля image
   const lastMessages = await Message.find()
     .sort({ timestamp: -1 })
     .limit(50);
@@ -66,33 +61,38 @@ io.on("connection", async (socket) => {
       sender: msg.sender,
       timestamp: msg.timestamp,
       username: msg.username,
-      avatar: msg.avatar, // має бути тут
+      avatar: msg.avatar,
+      image: msg.image || null,  // ← додано
     }))
   );
+
   socket.emit("online-users", usersArray);
   socket.broadcast.emit("user-joined", username);
 
   socket.on("message", async (data) => {
-    // Передається при emit з клієнта
-    const { text, username: name, avatar } = data;
+    // Розпаковуємо поле image
+    const { text, username: name, avatar, image } = data;
     console.log("⌨️  отримано data від клієнта:", data);
-    // Збережемо в БД разом з avatar
+
+    // Зберігаємо повідомлення разом з image
     const savedMsg = new Message({
       sender: "user",
       text,
       timestamp: new Date(),
       username: name,
       avatar,
+      image: image || null,  // ← додано
     });
     await savedMsg.save();
 
-    // Відправимо всім нове повідомлення з avatar
+    // Відправляємо повідомлення усім, включаючи image
     io.emit("message", {
       sender: "user",
       text,
       timestamp: savedMsg.timestamp,
       username: name,
       avatar,
+      image: image || null,  // ← додано
     });
   });
 
