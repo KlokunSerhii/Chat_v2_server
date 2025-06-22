@@ -1,0 +1,11 @@
+# Ігноруємо node_modules
+node_modules/
+
+# Ігноруємо логи та інше сміття
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Ігноруємо .env-файли, якщо є
+.env
+.env.local
