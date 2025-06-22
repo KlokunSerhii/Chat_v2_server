@@ -101,14 +101,6 @@ io.on("connection", async (socket) => {
       image: image || null, // ← додано
     });
   });
-  socket.on("reaction", ({ messageId, reaction }) => {
-    // Логіка для збереження реакції на сервері (збереження в базі даних або пам'яті)
-    const message = findMessageById(messageId); // необхідно знайти повідомлення
-    if (message) {
-      message.reactions.push(reaction); // Додаємо реакцію
-      io.emit("message", message); // Відправляємо оновлене повідомлення
-    }
-  });
 
   socket.on("disconnect", () => {
     const user = users.get(socket.id);
