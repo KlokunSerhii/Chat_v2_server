@@ -6,6 +6,7 @@ import cors from "cors";
 import path from "path";
 import multer from "multer";
 import fs from "fs";
+import moment from "moment";
 
 const PORT = 3001;
 const MONGO_URI =
@@ -73,7 +74,13 @@ io.on("connection", async (socket) => {
   );
 
   socket.emit("online-users", usersArray);
-  socket.broadcast.emit("user-joined", username);
+
+  const timestamp = moment().format("HH:mm");
+
+  socket.broadcast.emit("user-joined", {
+    username, // передаємо ім'я користувача
+    timestamp, // передаємо час
+  });
 
   socket.on("message", async (data) => {
     // Розпаковуємо поле image
