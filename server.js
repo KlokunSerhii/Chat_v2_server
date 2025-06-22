@@ -8,7 +8,8 @@ import multer from "multer";
 import fs from "fs";
 
 const PORT = 3001;
-const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/chatdb";
+const MONGO_URI =
+  process.env.MONGO_URI || "mongodb://localhost:27017/chatdb";
 
 const app = express();
 app.use(cors());
@@ -25,7 +26,7 @@ const messageSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now },
   username: String,
   avatar: String,
-  image: { type: String, default: null },  // ← додано
+  image: { type: String, default: null }, // ← додано
 });
 
 const Message = mongoose.model("Message", messageSchema);
@@ -45,7 +46,9 @@ io.on("connection", async (socket) => {
   const username = socket.handshake.query.username || "Гість";
   const avatar =
     socket.handshake.query.avatar ||
-    `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(username)}`;
+    `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
+      username
+    )}`;
 
   users.set(socket.id, { username, avatar });
 
@@ -65,7 +68,7 @@ io.on("connection", async (socket) => {
       timestamp: msg.timestamp,
       username: msg.username,
       avatar: msg.avatar,
-      image: msg.image || null,  // ← додано
+      image: msg.image || null, // ← додано
     }))
   );
 
@@ -84,7 +87,7 @@ io.on("connection", async (socket) => {
       timestamp: new Date(),
       username: name,
       avatar,
-      image: image || null,  // ← додано
+      image: image || null, // ← додано
     });
     await savedMsg.save();
 
@@ -95,8 +98,17 @@ io.on("connection", async (socket) => {
       timestamp: savedMsg.timestamp,
       username: name,
       avatar,
-      image: image || null,  // ← додано
+      image: image || null, // ← додано
     });
+  });
+  socket.on("reaction", ({ messageId, reaction }) => {
+    // Тут зберігаємо реакцію для відповідного повідомлення
+    // Наприклад, додаємо реакцію до повідомлення в базі даних або в пам'яті
+    const message = findMessageById(messageId); // знайти повідомлення
+    if (message) {
+      message.reactions.push(reaction); // додаємо реакцію
+      io.emit("message", message); // відправляємо повідомлення всім
+    }
   });
 
   socket.on("disconnect", () => {
