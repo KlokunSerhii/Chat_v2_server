@@ -102,12 +102,11 @@ io.on("connection", async (socket) => {
     });
   });
   socket.on("reaction", ({ messageId, reaction }) => {
-    // Тут зберігаємо реакцію для відповідного повідомлення
-    // Наприклад, додаємо реакцію до повідомлення в базі даних або в пам'яті
-    const message = findMessageById(messageId); // знайти повідомлення
+    // Логіка для збереження реакції на сервері (збереження в базі даних або пам'яті)
+    const message = findMessageById(messageId); // необхідно знайти повідомлення
     if (message) {
-      message.reactions.push(reaction); // додаємо реакцію
-      io.emit("message", message); // відправляємо повідомлення всім
+      message.reactions.push(reaction); // Додаємо реакцію
+      io.emit("message", message); // Відправляємо оновлене повідомлення
     }
   });
 
