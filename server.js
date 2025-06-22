@@ -3,6 +3,9 @@ import http from "http";
 import { Server } from "socket.io";
 import mongoose from "mongoose";
 import cors from "cors";
+import path from "path";
+import multer from "multer";
+import fs from "fs";
 
 const PORT = 3001;
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/chatdb";
@@ -103,6 +106,37 @@ io.on("connection", async (socket) => {
       users.delete(socket.id);
     }
   });
+});
+// ПАПКА для збереження аватарок
+const avatarsDir = path.resolve("avatars");
+if (!fs.existsSync(avatarsDir)) {
+  fs.mkdirSync(avatarsDir);
+}
+
+// Multer storage
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "avatars/");
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `${Date.now()}-${file.originalname}`;
+    cb(null, uniqueName);
+  },
+});
+const upload = multer({ storage });
+
+// ─────────────────────────────────────────────
+// Статичний доступ до файлів
+app.use("/avatars", express.static("avatars"));
+
+// ─────────────────────────────────────────────
+// POST /upload-avatar
+app.post("/upload-avatar", upload.single("avatar"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "Файл не завантажено" });
+  }
+  const avatarUrl = `/avatars/${req.file.filename}`;
+  res.json({ avatarUrl });
 });
 
 server.listen(PORT, () => {
