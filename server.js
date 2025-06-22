@@ -74,13 +74,7 @@ io.on("connection", async (socket) => {
   );
 
   socket.emit("online-users", usersArray);
-
-  const timestamp = moment().format("HH:mm");
-
-  socket.broadcast.emit("user-joined", {
-    username, // передаємо ім'я користувача
-    timestamp, // передаємо час
-  });
+  socket.broadcast.emit("user-joined", username);
 
   socket.on("message", async (data) => {
     // Розпаковуємо поле image
