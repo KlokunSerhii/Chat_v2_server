@@ -8,6 +8,7 @@ import multer from "multer";
 import fs from "fs";
 import moment from "moment";
 import cloudinary from "cloudinary";
+import stream from "stream"; // Додано імпорт stream
 
 // Налаштування Cloudinary
 cloudinary.config({
@@ -130,29 +131,37 @@ app.post(
       return res.status(400).json({ error: "Файл не завантажено" });
     }
 
+    console.log("Отримано файл для завантаження на Cloudinary");
+
     try {
       // Завантажуємо аватарку в Cloudinary
-      const result = await cloudinary.uploader.upload_stream(
-        { folder: "avatars" },
-        (error, result) => {
-          if (error) {
-            return res
-              .status(500)
-              .json({ error: "Помилка завантаження" });
+      const result = await new Promise((resolve, reject) => {
+        const cloudinaryStream = cloudinary.uploader.upload_stream(
+          { folder: "avatars" },
+          (error, result) => {
+            if (error) {
+              console.error(
+                "Помилка при завантаженні на Cloudinary:",
+                error
+              );
+              reject(error);
+            }
+            resolve(result);
           }
-          res.json({ avatarUrl: result.secure_url });
-        }
-      );
+        );
 
-      // Завантажуємо файл в Cloudinary
-      const bufferStream = new stream.PassThrough();
-      bufferStream.end(req.file.buffer);
-      bufferStream.pipe(result);
+        const bufferStream = new stream.PassThrough();
+        bufferStream.end(req.file.buffer);
+        bufferStream.pipe(cloudinaryStream);
+      });
+
+      console.log("Завантажено на Cloudinary:", result.secure_url);
+      return res.json({ avatarUrl: result.secure_url });
     } catch (err) {
-      res
+      console.error("Помилка при завантаженні на Cloudinary:", err);
+      return res
         .status(500)
         .json({ error: "Помилка завантаження на Cloudinary" });
-      console.error(err);
     }
   }
 );
