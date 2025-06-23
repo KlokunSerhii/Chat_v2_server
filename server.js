@@ -45,7 +45,11 @@ cloudinary.config({
   api_key: process.env.CLOUDINARY_API_KEY, // Ваш API Key
   api_secret: process.env.CLOUDINARY_API_SECRET, // Ваш API Secret
 });
-
+console.log(
+  process.env.CLOUDINARY_CLOUD_NAME,
+  process.env.CLOUDINARY_API_KEY,
+  process.env.CLOUDINARY_API_SECRET
+);
 // Оновлена схема — додано поле image (Base64-рядок або null)
 const messageSchema = new mongoose.Schema({
   sender: String,
