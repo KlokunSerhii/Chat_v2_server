@@ -9,3 +9,4 @@ yarn-error.log
 # Ігноруємо .env-файли, якщо є
 .env
 .env.local
+avatars/

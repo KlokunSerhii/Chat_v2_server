@@ -1,0 +1,64 @@
+import express from "express";
+import multer from "multer";
+import fs from "fs";
+import util from "util";
+import cloudinary from "../utils/cloudinary.js";
+
+const router = express.Router();
+const unlinkAsync = util.promisify(fs.unlink);
+
+// Multer конфіг
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, "avatars/"),
+  filename: (req, file, cb) =>
+    cb(null, `${Date.now()}-${file.originalname}`),
+});
+const upload = multer({ storage });
+
+// Завантаження аватарки
+router.post(
+  "/upload-avatar",
+  upload.single("avatar"),
+  async (req, res) => {
+    if (!req.file)
+      return res.status(400).json({ error: "Файл не завантажено" });
+
+    try {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "avatars",
+      });
+      await unlinkAsync(req.file.path);
+      res.json({ avatarUrl: result.secure_url });
+    } catch (err) {
+      console.error(err);
+      res
+        .status(500)
+        .json({ error: "Помилка при завантаженні аватарки" });
+    }
+  }
+);
+
+// Завантаження зображення з чату
+router.post(
+  "/send-image",
+  upload.single("image"),
+  async (req, res) => {
+    if (!req.file)
+      return res.status(400).json({ error: "Файл не завантажено" });
+
+    try {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "chat-images",
+      });
+      await unlinkAsync(req.file.path);
+      res.json({ imageUrl: result.secure_url });
+    } catch (err) {
+      console.error(err);
+      res
+        .status(500)
+        .json({ error: "Помилка при завантаженні зображення" });
+    }
+  }
+);
+
+export default router;
