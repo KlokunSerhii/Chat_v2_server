@@ -1,4 +1,4 @@
-import express from "express";More actions
+import express from "express";
 import http from "http";
 import { Server } from "socket.io";
 import mongoose from "mongoose";
@@ -75,7 +75,6 @@ io.on("connection", async (socket) => {
 
   socket.emit("online-users", usersArray);
 
-  
   socket.broadcast.emit("user-joined", username);
 
   socket.on("message", async (data) => {
