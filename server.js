@@ -183,7 +183,35 @@ app.post(
     }
   }
 );
+app.post("/send-image", upload.single("image"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "Файл не завантажено" });
+    }
 
+    // Завантаження файлу на Cloudinary
+    const result = await cloudinary.v2.uploader.upload(
+      req.file.path,
+      {
+        folder: "chat-images", // Вказуємо папку для зберігання зображень на Cloudinary
+      }
+    );
+
+    // Повертаємо URL зображення з Cloudinary
+    const imageUrl = result.secure_url;
+
+    // Видалення локального файлу після завантаження на Cloudinary
+    const unlinkAsync = util.promisify(fs.unlink);
+    await unlinkAsync(req.file.path);
+
+    res.json({ imageUrl }); // Відправляємо URL зображення
+  } catch (err) {
+    res
+      .status(500)
+      .json({ error: "Помилка завантаження на Cloudinary" });
+    console.error(err);
+  }
+});
 server.listen(PORT, () => {
   console.log(`Socket.IO server running on port ${PORT}`);
 });
