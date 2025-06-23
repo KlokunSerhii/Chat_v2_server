@@ -1,4 +1,4 @@
-import express from "express";
+import express from "express";More actions
 import http from "http";
 import { Server } from "socket.io";
 import mongoose from "mongoose";
@@ -7,15 +7,6 @@ import path from "path";
 import multer from "multer";
 import fs from "fs";
 import moment from "moment";
-import cloudinary from "cloudinary";
-import stream from "stream"; // Додано імпорт stream
-
-// Налаштування Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME, // Ваш Cloudinary Cloud Name
-  api_key: process.env.CLOUDINARY_API_KEY, // Ваш API Key
-  api_secret: process.env.CLOUDINARY_API_SECRET, // Ваш API Secret
-});
 
 const PORT = 3001;
 const MONGO_URI =
@@ -29,14 +20,14 @@ const io = new Server(server, {
   cors: { origin: "*" },
 });
 
-// Схема повідомлень
+// Оновлена схема — додано поле image (Base64-рядок або null)
 const messageSchema = new mongoose.Schema({
   sender: String,
   text: String,
   timestamp: { type: Date, default: Date.now },
   username: String,
   avatar: String,
-  image: { type: String, default: null },
+  image: { type: String, default: null }, // ← додано
 });
 
 const Message = mongoose.model("Message", messageSchema);
@@ -52,7 +43,6 @@ mongoose.connection.once("open", () => {
   console.log("MongoDB connected");
 });
 
-// Відкриття підключення Socket.io
 io.on("connection", async (socket) => {
   const username = socket.handshake.query.username || "Гість";
   const avatar =
@@ -65,7 +55,7 @@ io.on("connection", async (socket) => {
 
   const usersArray = Array.from(users.values());
 
-  // Завантажуємо останні повідомлення
+  // Завантажуємо останні повідомлення з урахуванням поля image
   const lastMessages = await Message.find()
     .sort({ timestamp: -1 })
     .limit(50);
@@ -79,34 +69,39 @@ io.on("connection", async (socket) => {
       timestamp: msg.timestamp,
       username: msg.username,
       avatar: msg.avatar,
-      image: msg.image || null,
+      image: msg.image || null, // ← додано
     }))
   );
 
   socket.emit("online-users", usersArray);
+
+  
   socket.broadcast.emit("user-joined", username);
 
   socket.on("message", async (data) => {
+    // Розпаковуємо поле image
     const { text, username: name, avatar, image } = data;
     console.log("⌨️  отримано data від клієнта:", data);
 
+    // Зберігаємо повідомлення разом з image
     const savedMsg = new Message({
       sender: "user",
       text,
       timestamp: new Date(),
       username: name,
       avatar,
-      image: image || null,
+      image: image || null, // ← додано
     });
     await savedMsg.save();
 
+    // Відправляємо повідомлення усім, включаючи image
     io.emit("message", {
       sender: "user",
       text,
       timestamp: savedMsg.timestamp,
       username: name,
       avatar,
-      image: image || null,
+      image: image || null, // ← додано
     });
   });
 
@@ -118,42 +113,38 @@ io.on("connection", async (socket) => {
     }
   });
 });
+// ПАПКА для збереження аватарок
+const avatarsDir = path.resolve("avatars");
+if (!fs.existsSync(avatarsDir)) {
+  fs.mkdirSync(avatarsDir);
+}
 
-// Multer конфігурація
-const storage = multer.memoryStorage(); // Використовуємо пам'ять замість диска
+// Multer storage
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "avatars/");
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `${Date.now()}-${file.originalname}`;
+    cb(null, uniqueName);
+  },
+});
 const upload = multer({ storage });
 
-app.post(
-  "/upload-avatar",
-  upload.single("avatar"),
-  async (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({ error: "Файл не завантажено" });
-    }
+// ─────────────────────────────────────────────
+// Статичний доступ до файлів
+app.use("/avatars", express.static("avatars"));
 
-    try {
-      // Завантаження файлу в Cloudinary
-      cloudinary.uploader
-        .upload_stream({ folder: "avatars" }, (error, result) => {
-          if (error) {
-            return res
-              .status(500)
-              .json({ error: "Помилка завантаження на Cloudinary" });
-          }
-          // Повертаємо URL завантаженого зображення
-          res.json({ avatarUrl: result.secure_url });
-        })
-        .end(req.file.buffer);
-    } catch (err) {
-      res
-        .status(500)
-        .json({ error: "Помилка завантаження на Cloudinary" });
-      console.error(err);
-    }
+// ─────────────────────────────────────────────
+// POST /upload-avatar
+app.post("/upload-avatar", upload.single("avatar"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "Файл не завантажено" });
   }
-);
+  const avatarUrl = `/avatars/${req.file.filename}`;
+  res.json({ avatarUrl });
+});
 
-// Стартуємо сервер
 server.listen(PORT, () => {
   console.log(`Socket.IO server running on port ${PORT}`);
 });
