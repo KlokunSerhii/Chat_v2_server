@@ -15,7 +15,13 @@ const MONGO_URI =
   process.env.MONGO_URI || "mongodb://localhost:27017/chatdb";
 
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:5173", // або ваш фронтенд-домен
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type"],
+  })
+);
 
 const server = http.createServer(app);
 const io = new Server(server, {
