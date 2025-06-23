@@ -1,4 +1,4 @@
-import express from "express";More actions
+import express from "express";
 import http from "http";
 import { Server } from "socket.io";
 import mongoose from "mongoose";
@@ -41,9 +41,9 @@ const io = new Server(server, {
 
 // Налаштування Cloudinary
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
-  api_key: process.env.CLOUDINARY_API_KEY, 
-  api_secret: process.env.CLOUDINARY_API_SECRET, 
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 // Оновлена схема — додано поле image (Base64-рядок або null)
@@ -177,7 +177,7 @@ app.post(
       res.json({ avatarUrl }); // Відправляємо URL аватарки
     } catch (err) {
       res
-        .status(500)More actions
+        .status(500)
         .json({ error: "Помилка завантаження на Cloudinary" });
       console.error(err);
     }
