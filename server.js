@@ -105,7 +105,7 @@ io.on("connection", async (socket) => {
 
     message.reactions = reactions;
     await message.save();
-
+    io.emit("react", { messageId, emoji, username, remove });
     io.emit("reaction-updated", {
       messageId,
       reactions: JSON.parse(JSON.stringify(reactions)),
