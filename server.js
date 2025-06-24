@@ -79,7 +79,7 @@ io.on("connection", async (socket) => {
     const user = users.get(socket.id);
     if (!user) return;
 
-    const message = await Message.findOne({ _id: messageId });
+    const message = await Message.findById({ _id: messageId });
     if (!message) return;
 
     const username = user.username;
