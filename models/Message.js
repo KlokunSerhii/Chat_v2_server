@@ -7,6 +7,11 @@ const messageSchema = new mongoose.Schema({
   username: String,
   avatar: String,
   image: { type: String, default: null },
+reactions: {
+  type: Map,
+  of: [String],
+  default: {},
+},
 });
 
 export default mongoose.model("Message", messageSchema);
