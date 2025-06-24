@@ -75,7 +75,7 @@ socket.on("react", async ({ messageId, emoji, remove }) => {
   const user = users.get(socket.id);
   if (!user) return;
 
-  const message = await Message.findById(messageId);
+  const message = await Message.findOne({ _id: messageId });
   if (!message) return;
 
   const username = user.username;
