@@ -102,9 +102,9 @@ socket.on("react", async ({ messageId, emoji, remove }) => {
   await message.save();
 
   io.emit("reaction-updated", {
-    messageId,
-    reactions,
-  });
+  messageId,
+  reactions: JSON.parse(JSON.stringify(reactions)),
+});
 });
 
   
