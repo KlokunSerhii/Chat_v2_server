@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const messageSchema = new mongoose.Schema({
    _id: {
     type: String,
-    default: () => uuidv4(),
+    
   },
   sender: String,
   text: String,
