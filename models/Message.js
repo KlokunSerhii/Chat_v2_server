@@ -8,8 +8,7 @@ const messageSchema = new mongoose.Schema({
   avatar: String,
   image: { type: String, default: null },
   reactions: {
-    type: Map,
-    of: [String],
+    type: Object,
     default: {},
   },
 });
