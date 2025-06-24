@@ -6,6 +6,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import Message from "./models/Message.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
+import messageRouters from "./routes/messageRoutes.js";
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ const MONGO_URI =
 app.use(cors());
 app.use("/avatars", express.static("avatars"));
 app.use("/", uploadRoutes);
+app.use("/api/messages", messageRouters);
 
 mongoose.connect(MONGO_URI, {
   useNewUrlParser: true,
@@ -70,44 +72,45 @@ io.on("connection", async (socket) => {
       image: image || null,
     });
   });
-  
-socket.on("react", async ({ messageId, emoji, remove }) => {
-  const user = users.get(socket.id);
-  if (!user) return;
 
-  const message = await Message.findOne({ _id: messageId });
-  if (!message) return;
+  socket.on("react", async ({ messageId, emoji, remove }) => {
+    const user = users.get(socket.id);
+    if (!user) return;
 
-  const username = user.username;
-  const reactions = message.reactions || {};
+    const message = await Message.findOne({ _id: messageId });
+    if (!message) return;
 
-  if (!reactions[emoji]) {
-    reactions[emoji] = [];
-  }
+    const username = user.username;
+    const reactions = message.reactions || {};
 
-  if (remove) {
-    // Видалити реакцію користувача
-    reactions[emoji] = reactions[emoji].filter((u) => u !== username);
-    if (reactions[emoji].length === 0) {
-      delete reactions[emoji];
+    if (!reactions[emoji]) {
+      reactions[emoji] = [];
     }
-  } else {
-    // Додати реакцію
-    if (!reactions[emoji].includes(username)) {
-      reactions[emoji].push(username);
+
+    if (remove) {
+      // Видалити реакцію користувача
+      reactions[emoji] = reactions[emoji].filter(
+        (u) => u !== username
+      );
+      if (reactions[emoji].length === 0) {
+        delete reactions[emoji];
+      }
+    } else {
+      // Додати реакцію
+      if (!reactions[emoji].includes(username)) {
+        reactions[emoji].push(username);
+      }
     }
-  }
 
-  message.reactions = reactions;
-  await message.save();
+    message.reactions = reactions;
+    await message.save();
 
-  io.emit("reaction-updated", {
-  messageId,
-  reactions: JSON.parse(JSON.stringify(reactions)),
-});
-});
+    io.emit("reaction-updated", {
+      messageId,
+      reactions: JSON.parse(JSON.stringify(reactions)),
+    });
+  });
 
-  
   socket.on("disconnect", () => {
     const user = users.get(socket.id);
     if (user) {
