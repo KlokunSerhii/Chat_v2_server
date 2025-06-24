@@ -19,6 +19,7 @@ const PORT = process.env.PORT || 3001;
 const MONGO_URI =
   process.env.MONGO_URI || "mongodb://localhost:27017/chatdb";
 
+app.use(express.json());
 app.use(cors());
 app.use("/avatars", express.static("avatars"));
 app.use("/", uploadRoutes);
