@@ -65,6 +65,7 @@ io.on("connection", async (socket) => {
     await savedMsg.save();
 
     io.emit("message", {
+      id: savedMsg._id,
       sender: "user",
       text,
       timestamp: savedMsg.timestamp,
