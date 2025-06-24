@@ -70,7 +70,44 @@ io.on("connection", async (socket) => {
       image: image || null,
     });
   });
+  
+socket.on("react", async ({ messageId, emoji, remove }) => {
+  const user = users.get(socket.id);
+  if (!user) return;
 
+  const message = await Message.findById(messageId);
+  if (!message) return;
+
+  const username = user.username;
+  const reactions = message.reactions || {};
+
+  if (!reactions[emoji]) {
+    reactions[emoji] = [];
+  }
+
+  if (remove) {
+    // Видалити реакцію користувача
+    reactions[emoji] = reactions[emoji].filter((u) => u !== username);
+    if (reactions[emoji].length === 0) {
+      delete reactions[emoji];
+    }
+  } else {
+    // Додати реакцію
+    if (!reactions[emoji].includes(username)) {
+      reactions[emoji].push(username);
+    }
+  }
+
+  message.reactions = reactions;
+  await message.save();
+
+  io.emit("reaction-updated", {
+    messageId,
+    reactions,
+  });
+});
+
+  
   socket.on("disconnect", () => {
     const user = users.get(socket.id);
     if (user) {
