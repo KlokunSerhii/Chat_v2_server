@@ -12,20 +12,26 @@ router.patch("/:id/react", async (req, res) => {
     return res.status(400).json({ error: "Invalid message ID" });
   }
   try {
-    const message = await Message.findById(req.params.id);
+    const message = await Message.findById(id);
     if (!message)
       return res.status(404).json({ error: "Message not found" });
 
-    const users = message.reactions.get(emoji) || [];
+    if (!message.reactions) {
+      message.reactions = {};
+    }
 
-    const updatedUsers = isRemoving
-      ? users.filter((u) => u !== username)
-      : [...new Set([...users, username])];
+    const currentUsers = new Set(message.reactions[emoji] || []);
 
-    if (updatedUsers.length > 0) {
-      message.reactions.set(emoji, updatedUsers);
+    if (isRemoving) {
+      currentUsers.delete(username);
     } else {
-      message.reactions.delete(emoji); // очищуємо emoji
+      currentUsers.add(username);
+    }
+
+    if (currentUsers.size > 0) {
+      message.reactions[emoji] = Array.from(currentUsers);
+    } else {
+      delete message.reactions[emoji]; // Remove the emoji key if no users left
     }
 
     await message.save();
