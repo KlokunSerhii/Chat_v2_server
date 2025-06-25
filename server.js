@@ -53,27 +53,32 @@ io.on("connection", async (socket) => {
   socket.broadcast.emit("user-joined", username);
 
   socket.on("message", async (data) => {
-    const { text, username: name, avatar, image } = data;
+  const { text, username, avatar, image } = data;
 
+  try {
     const savedMsg = new Message({
       sender: "user",
       text,
-      username: name,
+      username,
       avatar,
       image: image || null,
     });
+
     await savedMsg.save();
 
     io.emit("message", {
-       _id: savedMsg._id,
+      _id: savedMsg._id,
       sender: "user",
-      text,
+      text: savedMsg.text,
       timestamp: savedMsg.timestamp,
-      username: name,
-      avatar,
-      image: image || null,
+      username: savedMsg.username,
+      avatar: savedMsg.avatar,
+      image: savedMsg.image,
     });
-  });
+  } catch (err) {
+    console.error("❌ Помилка збереження повідомлення:", err);
+  }
+});
 
   socket.on("disconnect", () => {
     const user = users.get(socket.id);
