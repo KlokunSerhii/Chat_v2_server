@@ -39,7 +39,9 @@ const users = new Map();
 io.on("connection", async (socket) => {
 
   const username = socket.handshake.query.username || "Гість";
-  const avatar = users.set(socket.id, { username, avatar });
+  const avatar = socket.handshake.query.avatar || null;
+
+  users.set(socket.id, { username, avatar });
 
   const lastMessages = await Message.find()
     .sort({ timestamp: -1 })
