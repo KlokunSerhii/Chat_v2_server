@@ -35,12 +35,11 @@ mongoose.connection.once("open", () => {
 
 const users = new Map();
 
-io.on("connection", async (socket) => {
-  const username = socket.handshake.query.username || "Гість";
-  const avatar =
+
 io.on("connection", async (socket) => {
 
-  users.set(socket.id, { username, avatar });
+  const username = socket.handshake.query.username || "Гість";
+  const avatar = users.set(socket.id, { username, avatar });
 
   const lastMessages = await Message.find()
     .sort({ timestamp: -1 })
@@ -85,5 +84,4 @@ io.on("connection", async (socket) => {
 
 server.listen(PORT, () => {
   console.log(`🚀 Socket.IO server running on port ${PORT}`);
-});
 });
