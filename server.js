@@ -56,7 +56,11 @@ io.on("connection", async (socket) => {
 
   socket.emit("last-messages", lastMessages.reverse());
   socket.emit("online-users", Array.from(users.values()));
-  socket.broadcast.emit("user-joined", username);
+  socket.broadcast.emit("user-joined", {
+    username,
+    avatar,
+    timestamp: new Date().toISOString(),
+  });
 
   socket.on("message", async (data) => {
     const { text, username, avatar, image, video, audio } = data;
@@ -121,7 +125,11 @@ io.on("connection", async (socket) => {
   socket.on("disconnect", () => {
     const user = users.get(socket.id);
     if (user) {
-      io.emit("user-left", user.username);
+      io.emit("user-left", {
+        username: user.username,
+        avatar: user.avatar,
+        timestamp: new Date().toISOString(),
+      });
       users.delete(socket.id);
     }
     socket.removeAllListeners();
