@@ -29,7 +29,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use("/avatars", express.static("avatars"));
-app.use("/", uploadRoutes);
+app.use("/api", uploadRoutes);
 
 mongoose.connect(MONGO_URI, {
   useNewUrlParser: true,
