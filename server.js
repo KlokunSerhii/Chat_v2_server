@@ -13,14 +13,21 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: "*" },
+  cors: {
+    origin:  "*" ,
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
 });
 const PORT = process.env.PORT || 3001;
 const MONGO_URI =
   process.env.MONGO_URI || "mongodb://localhost:27017/chatdb";
 
 
-app.use(cors());
+app.use(cors({
+  origin: "*",
+  credentials: true,
+}));
 app.use("/avatars", express.static("avatars"));
 app.use("/", uploadRoutes);
 
