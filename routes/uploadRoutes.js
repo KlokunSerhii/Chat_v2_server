@@ -45,32 +45,36 @@ router.post(
 );
 
 // Завантаження зображення з чату
-router.post(
-  "/send-file",
-  upload.single("file"),
-  async (req, res) => {
-    if (!req.file)
-      return res.status(400).json({ error: "Файл не завантажено" });
+router.post("/send-file", upload.single("file"), async (req, res) => {
+  if (!req.file)
+    return res.status(400).json({ error: "Файл не завантажено" });
 
-    try {
-      const mimeType = req.file.mimetype;
-      let resourceType = "auto"; 
-
-
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "chat-uploads",
-        resource_type: resourceType,
-      });
-
-      await unlinkAsync(req.file.path);
-      res.json({ url: result.secure_url });
-    } catch (err) {
-      console.error(err);
-      res
-        .status(500)
-        .json({ error: "Помилка при завантаженні зображення" });
+  try {
+    let resourceType = "image";
+    if (req.file.mimetype.startsWith("video/")) {
+      resourceType = "video";
+    } else if (req.file.mimetype.startsWith("audio/")) {
+      resourceType = "video"; // для Cloudinary аудіо — це теж video
+    } else {
+      resourceType = "auto";
     }
+
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: "chat-uploads",
+      resource_type: resourceType,
+    });
+
+    await unlinkAsync(req.file.path);
+    res.json({
+      url: result.secure_url,
+      type: req.file.mimetype,
+    });
+  } catch (err) {
+    console.error("Upload error:", err.message, err);
+    res
+      .status(500)
+      .json({ error: "Помилка при завантаженні зображення" });
   }
-);
+});
 
 export default router;
