@@ -46,18 +46,24 @@ router.post(
 
 // Завантаження зображення з чату
 router.post(
-  "/send-image",
-  upload.single("image"),
+  "/send-file",
+  upload.single("file"),
   async (req, res) => {
     if (!req.file)
       return res.status(400).json({ error: "Файл не завантажено" });
 
     try {
+      const mimeType = req.file.mimetype;
+      let resourceType = "auto"; 
+
+
       const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "chat-images",
+        folder: "chat-uploads",
+        resource_type: resourceType,
       });
+
       await unlinkAsync(req.file.path);
-      res.json({ imageUrl: result.secure_url });
+      res.json({ url: result.secure_url });
     } catch (err) {
       console.error(err);
       res

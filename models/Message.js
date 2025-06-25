@@ -6,6 +6,8 @@ const messageSchema = new mongoose.Schema({
   username: { type: String, required: true },
   avatar: { type: String },
   image: { type: String },
+  audio: { type: String, default: null },
+  video: { type: String, default: null },
   timestamp: { type: Date, default: Date.now },
   reactions: [
     {
