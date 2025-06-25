@@ -7,6 +7,12 @@ import cloudinary from "../utils/cloudinary.js";
 const router = express.Router();
 const unlinkAsync = util.promisify(fs.unlink);
 
+// ⬇️ Створення директорії avatars/ якщо її немає
+const dir = "avatars";
+if (!fs.existsSync(dir)) {
+  fs.mkdirSync(dir, { recursive: true });
+}
+
 // Multer конфіг
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "avatars/"),
