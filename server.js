@@ -86,6 +86,35 @@ io.on("connection", async (socket) => {
     console.error("❌ Помилка збереження повідомлення:", err);
   }
 });
+  socket.on("toggle-reaction", async ({ messageId, emoji }) => {
+  const user = socket.handshake.query.username;
+
+  const message = await Message.findById(messageId);
+  if (!message) return;
+
+  const reactions = message.reactions || [];
+
+  const existingIndex = reactions.findIndex(
+    (r) => r.emoji === emoji && r.username === user
+  );
+
+  if (existingIndex !== -1) {
+    // Якщо реакція вже існує — видаляємо
+    reactions.splice(existingIndex, 1);
+  } else {
+    // Якщо немає — додаємо
+    reactions.push({ emoji, username: user });
+  }
+
+  message.reactions = reactions;
+  await message.save();
+
+  io.emit("reaction-update", {
+  messageId,
+  reactions: message.reactions,
+});
+});
+
 
   socket.on("disconnect", () => {
     const user = users.get(socket.id);
@@ -93,6 +122,7 @@ io.on("connection", async (socket) => {
       io.emit("user-left", user.username);
       users.delete(socket.id);
     }
+    socket.removeAllListeners();
   });
 });
 

@@ -7,6 +7,12 @@ const messageSchema = new mongoose.Schema({
   avatar: { type: String },
   image: { type: String },
   timestamp: { type: Date, default: Date.now },
+  reactions: [
+    {
+      emoji: String,
+      username: String,
+    },
+  ],
 });
 
 export default mongoose.model("Message", messageSchema);
