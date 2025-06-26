@@ -3,7 +3,7 @@ import multer from "multer";
 import fs from "fs";
 import util from "util";
 import cloudinary from "../utils/cloudinary.js";
-
+import path from "path";
 const router = express.Router();
 const unlinkAsync = util.promisify(fs.unlink);
 
@@ -58,7 +58,7 @@ router.post("/send-file", upload.single("file"), async (req, res) => {
     } else {
       resourceType = "auto";
     }
-    const path = require("path");
+    
     const publicId = path.parse(req.file.originalname).name;
 
     const result = await cloudinary.uploader.upload(req.file.path, {
