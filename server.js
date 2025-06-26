@@ -6,6 +6,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import Message from "./models/Message.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
 
 dotenv.config();
 
@@ -32,6 +33,7 @@ app.use(
 );
 app.use("/avatars", express.static("avatars"));
 app.use("/api", uploadRoutes);
+app.use("/api/auth", authRoutes);
 
 mongoose.connect(MONGO_URI, {
   useNewUrlParser: true,
@@ -119,7 +121,6 @@ io.on("connection", async (socket) => {
       messageId,
       reactions: message.reactions,
     });
-    console.log("Reaction update:", messageId, reactions);
   });
 
   socket.on("disconnect", () => {

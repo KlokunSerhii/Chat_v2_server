@@ -4,9 +4,11 @@ import fs from "fs";
 import util from "util";
 import cloudinary from "../utils/cloudinary.js";
 import path from "path";
+import { slugify as translitSlugify } from "transliteration";
+import bcrypt from "bcrypt";
+
 const router = express.Router();
 const unlinkAsync = util.promisify(fs.unlink);
-import { slugify as translitSlugify } from "transliteration";
 
 // ⬇️ Створення директорії avatars/ якщо її немає
 const dir = "avatars";
@@ -59,9 +61,11 @@ router.post("/send-file", upload.single("file"), async (req, res) => {
     } else {
       resourceType = "auto";
     }
-    
+
     const originalName = path.parse(req.file.originalname).name;
-    const translitName = translitSlugify(originalName, { lowercase: true }); 
+    const translitName = translitSlugify(originalName, {
+      lowercase: true,
+    });
     const publicId = `${translitName}`;
 
     const result = await cloudinary.uploader.upload(req.file.path, {
