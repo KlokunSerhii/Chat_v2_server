@@ -7,6 +7,7 @@ import path from "path";
 const router = express.Router();
 const unlinkAsync = util.promisify(fs.unlink);
 import slugify from "slugify";
+import transliteration from "transliteration";
 // ⬇️ Створення директорії avatars/ якщо її немає
 const dir = "avatars";
 if (!fs.existsSync(dir)) {
@@ -60,9 +61,8 @@ router.post("/send-file", upload.single("file"), async (req, res) => {
     }
     
     const originalName = path.parse(req.file.originalname).name;
-    const slugName = slugify(originalName, { lower: true, strict: true });
-    const timestamp = Date.now();
-    const publicId = `${slugName}-${timestamp}`;
+    const translitName = transliteration.slugify(originalName, { lowercase: true });
+    const publicId = `${translitName}`;
 
     const result = await cloudinary.uploader.upload(req.file.path, {
       folder: "chat-uploads",
