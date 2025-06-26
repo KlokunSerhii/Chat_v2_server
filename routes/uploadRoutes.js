@@ -62,8 +62,7 @@ router.post("/send-file", upload.single("file"), async (req, res) => {
     
     const originalName = path.parse(req.file.originalname).name;
     const translitName = translitSlugify(originalName, { lowercase: true }); 
-    const timestamp = Date.now();
-    const publicId = `${translitName}-${timestamp}`;
+    const publicId = `${translitName}`;
 
     const result = await cloudinary.uploader.upload(req.file.path, {
       folder: "chat-uploads",
