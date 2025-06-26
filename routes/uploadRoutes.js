@@ -58,10 +58,14 @@ router.post("/send-file", upload.single("file"), async (req, res) => {
     } else {
       resourceType = "auto";
     }
+    const path = require("path");
+    const publicId = path.parse(req.file.originalname).name;
 
     const result = await cloudinary.uploader.upload(req.file.path, {
       folder: "chat-uploads",
       resource_type: resourceType,
+      public_id: `chat-uploads/${publicId}`, // збереження оригінального імені
+      overwrite: true, // якщо файл із цим ім’ям вже є — перезаписати
     });
 
     await unlinkAsync(req.file.path);
