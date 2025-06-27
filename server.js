@@ -110,7 +110,8 @@ io.on("connection", async (socket) => {
     }
   });
   socket.on("toggle-reaction", async ({ messageId, emoji }) => {
-    const user = socket.handshake.query.username;
+      const user = users.get(socket.id);
+    if (!user) return;
 
     const message = await Message.findById(messageId);
     if (!message) return;
