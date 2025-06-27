@@ -3,6 +3,7 @@ import express from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import {authenticateToken} from "../middleware/middleware.js"
 
 const router = express.Router();
 const SECRET = process.env.JWT_SECRET || "mysecret";
@@ -32,7 +33,7 @@ router.post("/login", async (req, res) => {
     }
 
     const token = jwt.sign(
-      { username: user.username, avatar: user.avatar },
+      { username: user.username, avatar: user.avatar,id: user._id, },
       SECRET,
       { expiresIn: "7d" }
     );
@@ -74,7 +75,7 @@ router.post("/register", async (req, res) => {
     await newUser.save();
 
     const token = jwt.sign(
-      { username: newUser.username, avatar: newUser.avatar },
+      { username: newUser.username, avatar: newUser.avatar,id: newUser._id, },
       SECRET,
       { expiresIn: "7d" }
     );
@@ -89,6 +90,18 @@ router.post("/register", async (req, res) => {
   } catch (err) {
     console.error("❌ Register error:", err);
     res.status(500).json({ message: "Помилка сервера" });
+  }
+});
+
+
+router.get("/me", authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("username avatar");
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({ user });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
   }
 });
 

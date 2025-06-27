@@ -22,6 +22,7 @@ const io = new Server(server, {
 const PORT = process.env.PORT || 3001;
 const MONGO_URI =
   process.env.MONGO_URI || "mongodb://localhost:27017/chatdb";
+const JWT_SECRET = process.env.JWT_SECRET;
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
@@ -47,8 +48,22 @@ mongoose.connection.once("open", () => {
 const users = new Map();
 
 io.on("connection", async (socket) => {
-  const username = socket.handshake.query.username || "Гість";
-  const avatar = socket.handshake.query.avatar || null;
+  const token = socket.handshake.auth?.token;
+
+  if (!token) {
+    socket.disconnect(true);
+    return;
+  }
+
+  let decoded;
+  try {
+    decoded = jwt.verify(token, JWT_SECRET);
+  } catch (err) {
+    socket.disconnect(true);
+    return;
+  }
+
+  const { username, avatar, id } = decoded;
 
   users.set(socket.id, { username, avatar });
 
