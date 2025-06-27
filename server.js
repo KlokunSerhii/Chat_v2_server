@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 import Message from "./models/Message.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import jwt from "jsonwebtoken";
 
 dotenv.config();
 
