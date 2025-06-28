@@ -64,27 +64,26 @@ io.on("connection", async (socket) => {
     return;
   }
 
-  const { username, avatar, id } = decoded;
+  const { username, avatar, id: userId } = decoded;
 
-  users.set(socket.id, { username, avatar });
+  if (!users.has(userId)) {
+    users.set(userId, {
+      username,
+      avatar,
+      sockets: new Set([socket.id]),
+    });
+  } else {
+    users.get(userId).sockets.add(socket.id);
+  }
+
   emitOnlineUsers();
+
   const lastMessages = await Message.find()
     .sort({ timestamp: -1 })
     .limit(50);
 
   socket.emit("last-messages", lastMessages.reverse());
-  function emitOnlineUsers() {
-    const uniqueUsersMap = new Map();
 
-    for (const user of users.values()) {
-      if (!uniqueUsersMap.has(user.username)) {
-        uniqueUsersMap.set(user.username, user);
-      }
-    }
-
-    const uniqueUsers = Array.from(uniqueUsersMap.values());
-    io.emit("online-users", uniqueUsers);
-  }
   socket.broadcast.emit("user-joined", {
     username,
     avatar,
@@ -152,18 +151,34 @@ io.on("connection", async (socket) => {
   });
 
   socket.on("disconnect", () => {
-    const user = users.get(socket.id);
-    if (user) {
-      io.emit("user-left", {
-        username: user.username,
-        avatar: user.avatar,
-        timestamp: new Date().toISOString(),
-      });
-      users.delete(socket.id);
-      emitOnlineUsers();
+    if (users.has(userId)) {
+      const user = users.get(userId);
+      user.sockets.delete(socket.id);
+      if (user.sockets.size === 0) {
+        users.delete(userId);
+        io.emit("user-left", {
+          username: user.username,
+          avatar: user.avatar,
+          timestamp: new Date().toISOString(),
+        });
+      }
     }
+    emitOnlineUsers();
     socket.removeAllListeners();
   });
+
+  function emitOnlineUsers() {
+    const uniqueUsersMap = new Map();
+
+    for (const user of users.values()) {
+      if (!uniqueUsersMap.has(user.username)) {
+        uniqueUsersMap.set(user.username, user);
+      }
+    }
+
+    const uniqueUsers = Array.from(uniqueUsersMap.values());
+    io.emit("online-users", uniqueUsers);
+  }
 });
 
 server.listen(PORT, () => {
