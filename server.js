@@ -67,13 +67,24 @@ io.on("connection", async (socket) => {
   const { username, avatar, id } = decoded;
 
   users.set(socket.id, { username, avatar });
-
+  emitOnlineUsers();
   const lastMessages = await Message.find()
     .sort({ timestamp: -1 })
     .limit(50);
 
   socket.emit("last-messages", lastMessages.reverse());
-  socket.emit("online-users", Array.from(users.values()));
+  function emitOnlineUsers() {
+    const uniqueUsersMap = new Map();
+
+    for (const user of users.values()) {
+      if (!uniqueUsersMap.has(user.username)) {
+        uniqueUsersMap.set(user.username, user);
+      }
+    }
+
+    const uniqueUsers = Array.from(uniqueUsersMap.values());
+    io.emit("online-users", uniqueUsers);
+  }
   socket.broadcast.emit("user-joined", {
     username,
     avatar,
@@ -111,7 +122,7 @@ io.on("connection", async (socket) => {
     }
   });
   socket.on("toggle-reaction", async ({ messageId, emoji }) => {
-      const user = users.get(socket.id);
+    const user = users.get(socket.id);
     if (!user) return;
 
     const message = await Message.findById(messageId);
@@ -149,6 +160,7 @@ io.on("connection", async (socket) => {
         timestamp: new Date().toISOString(),
       });
       users.delete(socket.id);
+      emitOnlineUsers();
     }
     socket.removeAllListeners();
   });
