@@ -20,6 +20,7 @@ const io = new Server(server, {
     credentials: true,
   },
 });
+
 const PORT = process.env.PORT || 3001;
 const MONGO_URI =
   process.env.MONGO_URI || "mongodb://localhost:27017/chatdb";
@@ -27,12 +28,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-app.use(
-  cors({
-    origin: "*",
-    credentials: true,
-  })
-);
+app.use(cors({ origin: "*", credentials: true }));
 app.use("/avatars", express.static("avatars"));
 app.use("/api", uploadRoutes);
 app.use("/api/auth", authRoutes);
@@ -50,22 +46,20 @@ const users = new Map();
 
 io.on("connection", async (socket) => {
   const token = socket.handshake.auth?.token;
-
-  if (!token) {
-    socket.disconnect(true);
-    return;
-  }
+  if (!token) return socket.disconnect(true);
 
   let decoded;
   try {
     decoded = jwt.verify(token, JWT_SECRET);
-  } catch (err) {
-    socket.disconnect(true);
-    return;
+  } catch {
+    return socket.disconnect(true);
   }
 
   const { username, avatar, id: userId } = decoded;
-
+  socket.data.userId = userId;
+  socket.data.username = username;
+  socket.data.avatar = avatar;
+  console.log(userId);
   if (!users.has(userId)) {
     users.set(userId, {
       username,
@@ -80,15 +74,16 @@ io.on("connection", async (socket) => {
 
   const lastMessages = await Message.find({
     $or: [
-      { recipientId: null }, // публічні
-      { recipientId: userId }, // приватні, адресовані цьому користувачу
-      { senderId: userId }, // приватні, які він сам відправив
+      { recipientId: null },
+      { recipientId: userId },
+      { senderId: userId },
     ],
   })
     .sort({ timestamp: -1 })
-    .limit(100); // можеш збільшити до 100
+    .limit(100);
 
   socket.emit("last-messages", lastMessages.reverse());
+
   socket.broadcast.emit("user-joined", {
     username,
     avatar,
@@ -96,16 +91,13 @@ io.on("connection", async (socket) => {
   });
 
   socket.on("message", async (data) => {
-    const {
-      text,
-      username,
-      avatar,
-      image,
-      video,
-      audio,
-      localId,
-      recipientId,
-    } = data;
+    const { text, image, video, audio, localId, recipientId } = data;
+
+    const senderId = socket.data.userId;
+    const username = socket.data.username;
+    const avatar = socket.data.avatar;
+
+    if (!senderId) return;
 
     try {
       const savedMsg = new Message({
@@ -117,7 +109,8 @@ io.on("connection", async (socket) => {
         video: video || null,
         audio: audio || null,
         recipientId: recipientId || null,
-        senderId: userId,
+        senderId,
+        localId,
       });
 
       await savedMsg.save();
@@ -127,34 +120,31 @@ io.on("connection", async (socket) => {
         sender: "user",
         text: savedMsg.text,
         timestamp: savedMsg.timestamp,
-        username: savedMsg.username,
-        avatar: savedMsg.avatar,
+        username,
+        avatar,
         image: savedMsg.image,
         video: savedMsg.video,
         audio: savedMsg.audio,
         localId,
         recipientId,
-        senderId: userId,
+        senderId,
       };
 
-      const sender = users.get(userId);
+      const sender = users.get(senderId);
       const recipient = recipientId ? users.get(recipientId) : null;
 
-      // 🔁 Відправити відправнику
       if (sender) {
         for (const socketId of sender.sockets) {
           io.to(socketId).emit("message", fullMessage);
         }
       }
 
-      // 📨 Відправити одержувачу (тільки якщо це приватне повідомлення)
       if (recipient) {
         for (const socketId of recipient.sockets) {
           io.to(socketId).emit("message", fullMessage);
         }
       }
 
-      // 🌐 Якщо немає recipientId — це публічне повідомлення
       if (!recipientId) {
         socket.broadcast.emit("message", fullMessage);
       }
@@ -164,24 +154,23 @@ io.on("connection", async (socket) => {
   });
 
   socket.on("toggle-reaction", async ({ messageId, emoji }) => {
-    const user = users.get(socket.id);
-    if (!user) return;
+    const username = socket.data.username;
+    if (!username) return;
 
-    const message = await Message.findById(messageId);
+    const message = await Message.findOne({
+      $or: [{ _id: messageId }, { localId: messageId }],
+    });
     if (!message) return;
 
     const reactions = message.reactions || [];
-
     const existingIndex = reactions.findIndex(
-      (r) => r.emoji === emoji && r.username === user
+      (r) => r.emoji === emoji && r.username === username
     );
 
     if (existingIndex !== -1) {
-      // Якщо реакція вже існує — видаляємо
       reactions.splice(existingIndex, 1);
     } else {
-      // Якщо немає — додаємо
-      reactions.push({ emoji, username: user });
+      reactions.push({ emoji, username });
     }
 
     message.reactions = reactions;
@@ -194,6 +183,7 @@ io.on("connection", async (socket) => {
   });
 
   socket.on("disconnect", () => {
+    const userId = socket.data.userId;
     if (users.has(userId)) {
       const user = users.get(userId);
       user.sockets.delete(socket.id);

@@ -23,6 +23,10 @@ const messageSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  localId: {
+    type: String,
+    required: false,
+  },
 });
 
 export default mongoose.model("Message", messageSchema);
