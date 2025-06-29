@@ -157,9 +157,12 @@ io.on("connection", async (socket) => {
     const username = socket.data.username;
     if (!username) return;
 
-    const message = await Message.findOne({
-      $or: [{ _id: messageId }, { localId: messageId }],
-    });
+    let message;
+    if (mongoose.Types.ObjectId.isValid(messageId)) {
+      message = await Message.findById(messageId);
+    } else {
+      message = await Message.findOne({ localId: messageId });
+    }
     if (!message) return;
 
     const reactions = message.reactions || [];
