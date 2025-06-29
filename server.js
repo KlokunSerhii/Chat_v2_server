@@ -78,12 +78,17 @@ io.on("connection", async (socket) => {
 
   emitOnlineUsers();
 
-  const lastMessages = await Message.find()
+  const lastMessages = await Message.find({
+    $or: [
+      { recipientId: null }, // публічні
+      { recipientId: userId }, // приватні, адресовані цьому користувачу
+      { senderId: userId }, // приватні, які він сам відправив
+    ],
+  })
     .sort({ timestamp: -1 })
-    .limit(50);
+    .limit(100); // можеш збільшити до 100
 
   socket.emit("last-messages", lastMessages.reverse());
-
   socket.broadcast.emit("user-joined", {
     username,
     avatar,
@@ -91,8 +96,16 @@ io.on("connection", async (socket) => {
   });
 
   socket.on("message", async (data) => {
-    const { text, username, avatar, image, video, audio, localId } =
-      data;
+    const {
+      text,
+      username,
+      avatar,
+      image,
+      video,
+      audio,
+      localId,
+      recipientId,
+    } = data;
 
     try {
       const savedMsg = new Message({
@@ -103,11 +116,13 @@ io.on("connection", async (socket) => {
         image: image || null,
         video: video || null,
         audio: audio || null,
+        recipientId: recipientId || null,
+        senderId: userId,
       });
 
       await savedMsg.save();
 
-      io.emit("message", {
+      const fullMessage = {
         _id: savedMsg._id,
         sender: "user",
         text: savedMsg.text,
@@ -118,7 +133,31 @@ io.on("connection", async (socket) => {
         video: savedMsg.video,
         audio: savedMsg.audio,
         localId,
-      });
+        recipientId,
+        senderId: userId,
+      };
+
+      const sender = users.get(userId);
+      const recipient = recipientId ? users.get(recipientId) : null;
+
+      // 🔁 Відправити відправнику
+      if (sender) {
+        for (const socketId of sender.sockets) {
+          io.to(socketId).emit("message", fullMessage);
+        }
+      }
+
+      // 📨 Відправити одержувачу (тільки якщо це приватне повідомлення)
+      if (recipient) {
+        for (const socketId of recipient.sockets) {
+          io.to(socketId).emit("message", fullMessage);
+        }
+      }
+
+      // 🌐 Якщо немає recipientId — це публічне повідомлення
+      if (!recipientId) {
+        socket.broadcast.emit("message", fullMessage);
+      }
     } catch (err) {
       console.error("❌ Помилка збереження повідомлення:", err);
     }
@@ -172,15 +211,16 @@ io.on("connection", async (socket) => {
   });
 
   function emitOnlineUsers() {
-    const uniqueUsersMap = new Map();
+    const uniqueUsers = [];
 
-    for (const user of users.values()) {
-      if (!uniqueUsersMap.has(user.username)) {
-        uniqueUsersMap.set(user.username, user);
-      }
+    for (const [userId, userData] of users.entries()) {
+      uniqueUsers.push({
+        id: userId,
+        username: userData.username,
+        avatar: userData.avatar,
+      });
     }
 
-    const uniqueUsers = Array.from(uniqueUsersMap.values());
     io.emit("online-users", uniqueUsers);
   }
 });

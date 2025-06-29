@@ -15,6 +15,14 @@ const messageSchema = new mongoose.Schema({
       username: String,
     },
   ],
+  recipientId: {
+    type: String,
+    default: null,
+  },
+  senderId: {
+    type: String,
+    required: true,
+  },
 });
 
 export default mongoose.model("Message", messageSchema);
