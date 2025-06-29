@@ -91,7 +91,9 @@ io.on("connection", async (socket) => {
   });
 
   socket.on("message", async (data) => {
-    const { text, username, avatar, image, video, audio } = data;
+    const { text, username, avatar, image, video, audio, localId } =
+      data;
+
     try {
       const savedMsg = new Message({
         sender: "user",
@@ -115,11 +117,13 @@ io.on("connection", async (socket) => {
         image: savedMsg.image,
         video: savedMsg.video,
         audio: savedMsg.audio,
+        localId,
       });
     } catch (err) {
       console.error("❌ Помилка збереження повідомлення:", err);
     }
   });
+
   socket.on("toggle-reaction", async ({ messageId, emoji }) => {
     const user = users.get(socket.id);
     if (!user) return;
