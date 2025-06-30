@@ -154,18 +154,18 @@ io.on("connection", async (socket) => {
   });
 
   socket.on("typing", ({ recipientId }) => {
-    const { username } = socket.data;
+    // const { username, userId } = socket.data;
     if (!username) return;
 
     if (recipientId) {
       const recipient = users.get(recipientId);
       if (recipient) {
         for (const sid of recipient.sockets) {
-          io.to(sid).emit("user-typing", username);
+          io.to(sid).emit("user-typing", socket.data);
         }
       }
     } else {
-      socket.broadcast.emit("user-typing", username);
+      socket.broadcast.emit("user-typing", socket.data);
     }
   });
 
@@ -195,7 +195,10 @@ io.on("connection", async (socket) => {
     message.reactions = reactions;
     await message.save();
 
-    io.emit("reaction-update", message);
+    const fullMessage = message.toObject();
+    fullMessage.localId = message.localId; // <- Додати це
+
+    io.emit("reaction-update", fullMessage);
   });
 
   socket.on("disconnect", () => {
