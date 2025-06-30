@@ -59,7 +59,7 @@ io.on("connection", async (socket) => {
   socket.data.userId = userId;
   socket.data.username = username;
   socket.data.avatar = avatar;
-  console.log(userId);
+
   if (!users.has(userId)) {
     users.set(userId, {
       username,
@@ -153,6 +153,22 @@ io.on("connection", async (socket) => {
     }
   });
 
+  socket.on("typing", ({ recipientId }) => {
+    const { username } = socket.data;
+    if (!username) return;
+
+    if (recipientId) {
+      const recipient = users.get(recipientId);
+      if (recipient) {
+        for (const sid of recipient.sockets) {
+          io.to(sid).emit("user-typing", username);
+        }
+      }
+    } else {
+      socket.broadcast.emit("user-typing", username);
+    }
+  });
+
   socket.on("toggle-reaction", async ({ messageId, emoji }) => {
     const username = socket.data.username;
     if (!username) return;
@@ -179,10 +195,7 @@ io.on("connection", async (socket) => {
     message.reactions = reactions;
     await message.save();
 
-    io.emit("reaction-update", {
-      messageId,
-      reactions: message.reactions,
-    });
+    io.emit("reaction-update", message);
   });
 
   socket.on("disconnect", () => {
