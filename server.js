@@ -80,7 +80,11 @@ io.on("connection", async (socket) => {
     ],
   })
     .sort({ timestamp: -1 })
-    .limit(100);
+    .limit(100)
+    .populate({
+      path: "replyTo",
+      select: "username text",
+    });
 
   socket.emit("last-messages", lastMessages.reverse());
 
@@ -91,7 +95,15 @@ io.on("connection", async (socket) => {
   });
 
   socket.on("message", async (data) => {
-    const { text, image, video, audio, localId, recipientId } = data;
+    const {
+      text,
+      image,
+      video,
+      audio,
+      localId,
+      recipientId,
+      replyTo,
+    } = data;
 
     const senderId = socket.data.userId;
     const username = socket.data.username;
@@ -111,6 +123,10 @@ io.on("connection", async (socket) => {
         recipientId: recipientId || null,
         senderId,
         localId,
+        replyTo:
+          replyTo && typeof replyTo === "object"
+            ? replyTo.id
+            : replyTo || null,
       });
 
       await savedMsg.save();
@@ -128,6 +144,7 @@ io.on("connection", async (socket) => {
         localId,
         recipientId,
         senderId,
+        replyTo: savedMsg.replyTo,
       };
 
       const sender = users.get(senderId);

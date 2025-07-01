@@ -27,6 +27,11 @@ const messageSchema = new mongoose.Schema({
     type: String,
     required: false,
   },
+  replyTo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Message",
+    default: null,
+  },
 });
 
 export default mongoose.model("Message", messageSchema);
