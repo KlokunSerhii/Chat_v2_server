@@ -10,7 +10,7 @@ import authRoutes from "./routes/authRoutes.js";
 import jwt from "jsonwebtoken";
 import metadata from "url-metadata";
 import messageRoutes from "./routes/messageRoutes.js";
-
+import userRoutes from "./routes/usersRoutes.js";
 dotenv.config();
 
 const app = express();
@@ -35,6 +35,7 @@ app.use("/avatars", express.static("avatars"));
 app.use("/api", uploadRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
+app.use("/api", userRoutes);
 
 mongoose.connect(MONGO_URI, {
   useNewUrlParser: true,
