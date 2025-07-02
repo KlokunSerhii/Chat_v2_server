@@ -41,4 +41,33 @@ router.patch("/:id/react", async (req, res) => {
   }
 });
 
+router.delete("/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    let message;
+
+    // Перевіряємо, чи валідний id як ObjectId
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      message = await Message.findById(id);
+    }
+
+    // Якщо по ObjectId не знайдено, шукаємо по localId
+    if (!message) {
+      message = await Message.findOne({ localId: id });
+    }
+
+    if (!message) {
+      return res.status(404).json({ error: "Message not found" });
+    }
+
+    await message.remove();
+
+    res.json({ message: "Message deleted", id });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 export default router;

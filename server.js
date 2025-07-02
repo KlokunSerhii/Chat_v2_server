@@ -9,6 +9,7 @@ import uploadRoutes from "./routes/uploadRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import jwt from "jsonwebtoken";
 import metadata from "url-metadata";
+import messageRoutes from "./routes/messageRoutes.js";
 
 dotenv.config();
 
@@ -33,6 +34,7 @@ app.use(cors({ origin: "*", credentials: true }));
 app.use("/avatars", express.static("avatars"));
 app.use("/api", uploadRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/messages", messageRoutes);
 
 mongoose.connect(MONGO_URI, {
   useNewUrlParser: true,
@@ -113,65 +115,68 @@ io.on("connection", async (socket) => {
     if (!senderId) return;
     let linkPreview = null;
 
-// Знайти перше посилання у тексті
-const urlMatch = text?.match(/https?:\/\/[^\s]+/);
-if (urlMatch && urlMatch[0]) {
-  const url = urlMatch[0];
+    // Знайти перше посилання у тексті
+    const urlMatch = text?.match(/https?:\/\/[^\s]+/);
+    if (urlMatch && urlMatch[0]) {
+      const url = urlMatch[0];
 
-  // 🧠 Витягнення YouTube ID
- function extractYouTubeId(link) {
-  const patterns = [
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^\s&?/]+)/,         // звичайні відео
-    /youtube\.com\/embed\/([^\s&?/]+)/,                           // embed
-    /youtube\.com\/shorts\/([^\s&?/]+)/,                          // shorts
-    /youtube\.com\/live\/([^\s&?/]+)/,                            // live
-  ];
+      // 🧠 Витягнення YouTube ID
+      function extractYouTubeId(link) {
+        const patterns = [
+          /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^\s&?/]+)/, // звичайні відео
+          /youtube\.com\/embed\/([^\s&?/]+)/, // embed
+          /youtube\.com\/shorts\/([^\s&?/]+)/, // shorts
+          /youtube\.com\/live\/([^\s&?/]+)/, // live
+        ];
 
-  for (const pattern of patterns) {
-    const match = link.match(pattern);
-    if (match) return match[1];
-  }
+        for (const pattern of patterns) {
+          const match = link.match(pattern);
+          if (match) return match[1];
+        }
 
-  return null;
-}
-
-  const ytId = extractYouTubeId(url);
-
-  if (ytId) {
-    // ✅ Спеціальний хак для YouTube прев’ю
-    linkPreview = {
-      title: "YouTube Video",
-      description: "Watch this video on YouTube",
-      image: `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`,
-      url,
-    };
-  } else {
-    try {
-      const meta = await metadata(url);
-
-      // Перевірка на зображення
-      let imageUrl = meta.image || meta["og:image"] || meta["twitter:image"];
-      if (imageUrl?.startsWith("http:")) {
-        imageUrl = imageUrl.replace(/^http:/, "https:");
+        return null;
       }
 
-      linkPreview = {
-        title: meta.title || url,
-        description: meta.description || "",
-        image: imageUrl || null,
-        url: meta.url || url,
-      };
+      const ytId = extractYouTubeId(url);
 
-      // Якщо посилання є, але немає картинки — краще не показувати прев’ю
-      if (!linkPreview.image) {
-        linkPreview = null;
+      if (ytId) {
+        // ✅ Спеціальний хак для YouTube прев’ю
+        linkPreview = {
+          title: "YouTube Video",
+          description: "Watch this video on YouTube",
+          image: `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`,
+          url,
+        };
+      } else {
+        try {
+          const meta = await metadata(url);
+
+          // Перевірка на зображення
+          let imageUrl =
+            meta.image || meta["og:image"] || meta["twitter:image"];
+          if (imageUrl?.startsWith("http:")) {
+            imageUrl = imageUrl.replace(/^http:/, "https:");
+          }
+
+          linkPreview = {
+            title: meta.title || url,
+            description: meta.description || "",
+            image: imageUrl || null,
+            url: meta.url || url,
+          };
+
+          // Якщо посилання є, але немає картинки — краще не показувати прев’ю
+          if (!linkPreview.image) {
+            linkPreview = null;
+          }
+        } catch (err) {
+          console.warn(
+            "⚠️ Неможливо отримати мета-дані:",
+            err.message
+          );
+        }
       }
-    } catch (err) {
-      console.warn("⚠️ Неможливо отримати мета-дані:", err.message);
     }
-  }
-}
-
 
     try {
       const savedMsg = new Message({
@@ -189,7 +194,7 @@ if (urlMatch && urlMatch[0]) {
           replyTo && typeof replyTo === "object"
             ? replyTo.id
             : replyTo || null,
-            linkPreview, 
+        linkPreview,
       });
 
       await savedMsg.save();
@@ -208,7 +213,7 @@ if (urlMatch && urlMatch[0]) {
         recipientId,
         senderId,
         replyTo: savedMsg.replyTo,
-        linkPreview: savedMsg.linkPreview, 
+        linkPreview: savedMsg.linkPreview,
       };
 
       const sender = users.get(senderId);
@@ -280,6 +285,17 @@ if (urlMatch && urlMatch[0]) {
     fullMessage.localId = message.localId; // <- Додати це
 
     io.emit("reaction-update", fullMessage);
+  });
+
+  socket.on("delete-message", async (id) => {
+    if (!mongoose.Types.ObjectId.isValid(id)) return;
+
+    try {
+      await Message.findByIdAndDelete(id);
+      io.emit("message-deleted", { id }); // повідомляємо всіх клієнтів
+    } catch (e) {
+      console.error(e);
+    }
   });
 
   socket.on("disconnect", () => {
