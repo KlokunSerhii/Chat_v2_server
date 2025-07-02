@@ -1,6 +1,7 @@
 import express from "express";
 import Message from "../models/Message.js";
 import mongoose from "mongoose";
+import { authenticateToken } from "../middleware/authenticateToken.js";
 
 const router = express.Router();
 
@@ -41,7 +42,7 @@ router.patch("/:id/react", async (req, res) => {
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", authenticateToken, async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -59,6 +60,11 @@ router.delete("/:id", async (req, res) => {
 
     if (!message) {
       return res.status(404).json({ error: "Message not found" });
+    }
+    if (message.username !== req.user.username) {
+      return res
+        .status(403)
+        .json({ error: "Forbidden: cannot delete others' messages" });
     }
 
     await message.deleteOne();
