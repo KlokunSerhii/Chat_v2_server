@@ -1,7 +1,7 @@
 import express from "express";
 import Message from "../models/Message.js";
 import mongoose from "mongoose";
-import { authenticateToken } from "../middleware/authenticateToken.js";
+import { authenticateToken } from "../middleware/middleware.js";
 
 const router = express.Router();
 
