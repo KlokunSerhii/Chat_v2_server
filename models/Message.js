@@ -32,6 +32,12 @@ const messageSchema = new mongoose.Schema({
     ref: "Message",
     default: null,
   },
+  linkPreview: {
+  title: String,
+  description: String,
+  image: String,
+  url: String,
+},
 });
 
 export default mongoose.model("Message", messageSchema);

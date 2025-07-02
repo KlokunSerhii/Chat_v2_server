@@ -8,6 +8,7 @@ import Message from "./models/Message.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import jwt from "jsonwebtoken";
+import metadata from "url-metadata";
 
 dotenv.config();
 
@@ -110,6 +111,24 @@ io.on("connection", async (socket) => {
     const avatar = socket.data.avatar;
 
     if (!senderId) return;
+    let linkPreview = null;
+
+// Перевірити чи є посилання в тексті
+const urlMatch = text?.match(/https?:\/\/[^\s]+/);
+if (urlMatch && urlMatch[0]) {
+  try {
+    const meta = await metadata(urlMatch[0]);
+    linkPreview = {
+      title: meta.title || "",
+      description: meta.description || "",
+      image: meta.image || meta["og:image"] || "",
+      url: meta.url || urlMatch[0],
+    };
+  } catch (err) {
+    console.warn("⚠️ Неможливо отримати мета-дані:", err.message);
+  }
+}
+
 
     try {
       const savedMsg = new Message({
@@ -127,6 +146,7 @@ io.on("connection", async (socket) => {
           replyTo && typeof replyTo === "object"
             ? replyTo.id
             : replyTo || null,
+            linkPreview, 
       });
 
       await savedMsg.save();
@@ -145,6 +165,7 @@ io.on("connection", async (socket) => {
         recipientId,
         senderId,
         replyTo: savedMsg.replyTo,
+        linkPreview: savedMsg.linkPreview, 
       };
 
       const sender = users.get(senderId);
