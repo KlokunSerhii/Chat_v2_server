@@ -143,7 +143,7 @@ if (urlMatch && urlMatch[0]) {
       linkPreview = {
         title: meta.title || "",
         description: meta.description || "",
-        image: meta.image || meta["og:image"] || "",
+        image: (meta.image || meta["og:image"] || "").replace(/^http:/, "https:"),
         url: meta.url || url,
       };
     } catch (err) {
