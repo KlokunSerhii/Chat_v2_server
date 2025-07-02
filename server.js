@@ -113,12 +113,12 @@ io.on("connection", async (socket) => {
     if (!senderId) return;
     let linkPreview = null;
 
-// Перевірити чи є посилання в тексті
+// Знайти перше посилання у тексті
 const urlMatch = text?.match(/https?:\/\/[^\s]+/);
 if (urlMatch && urlMatch[0]) {
   const url = urlMatch[0];
 
-  // Витягнення YouTube ID
+  // 🧠 Витягнення YouTube ID
   function extractYouTubeId(link) {
     const match = link.match(
       /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([^\s&?]+)/i
@@ -129,7 +129,7 @@ if (urlMatch && urlMatch[0]) {
   const ytId = extractYouTubeId(url);
 
   if (ytId) {
-    // 🟥 Якщо це YouTube — вручну створюємо прев’ю
+    // ✅ Спеціальний хак для YouTube прев’ю
     linkPreview = {
       title: "YouTube Video",
       description: "Watch this video on YouTube",
@@ -137,15 +137,26 @@ if (urlMatch && urlMatch[0]) {
       url,
     };
   } else {
-    // 🌐 Інакше — пробуємо зчитати мета-дані через `url-metadata`
     try {
       const meta = await metadata(url);
+
+      // Перевірка на зображення
+      let imageUrl = meta.image || meta["og:image"] || meta["twitter:image"];
+      if (imageUrl?.startsWith("http:")) {
+        imageUrl = imageUrl.replace(/^http:/, "https:");
+      }
+
       linkPreview = {
-        title: meta.title || "",
+        title: meta.title || url,
         description: meta.description || "",
-        image: (meta.image || meta["og:image"] || "").replace(/^http:/, "https:"),
+        image: imageUrl || null,
         url: meta.url || url,
       };
+
+      // Якщо посилання є, але немає картинки — краще не показувати прев’ю
+      if (!linkPreview.image) {
+        linkPreview = null;
+      }
     } catch (err) {
       console.warn("⚠️ Неможливо отримати мета-дані:", err.message);
     }
