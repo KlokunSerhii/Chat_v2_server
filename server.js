@@ -116,16 +116,39 @@ io.on("connection", async (socket) => {
 // Перевірити чи є посилання в тексті
 const urlMatch = text?.match(/https?:\/\/[^\s]+/);
 if (urlMatch && urlMatch[0]) {
-  try {
-    const meta = await metadata(urlMatch[0]);
+  const url = urlMatch[0];
+
+  // Витягнення YouTube ID
+  function extractYouTubeId(link) {
+    const match = link.match(
+      /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([^\s&?]+)/i
+    );
+    return match ? match[1] : null;
+  }
+
+  const ytId = extractYouTubeId(url);
+
+  if (ytId) {
+    // 🟥 Якщо це YouTube — вручну створюємо прев’ю
     linkPreview = {
-      title: meta.title || "",
-      description: meta.description || "",
-      image: meta.image || meta["og:image"] || "",
-      url: meta.url || urlMatch[0],
+      title: "YouTube Video",
+      description: "Watch this video on YouTube",
+      image: `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`,
+      url,
     };
-  } catch (err) {
-    console.warn("⚠️ Неможливо отримати мета-дані:", err.message);
+  } else {
+    // 🌐 Інакше — пробуємо зчитати мета-дані через `url-metadata`
+    try {
+      const meta = await metadata(url);
+      linkPreview = {
+        title: meta.title || "",
+        description: meta.description || "",
+        image: meta.image || meta["og:image"] || "",
+        url: meta.url || url,
+      };
+    } catch (err) {
+      console.warn("⚠️ Неможливо отримати мета-дані:", err.message);
+    }
   }
 }
 
