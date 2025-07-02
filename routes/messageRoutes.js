@@ -61,7 +61,7 @@ router.delete("/:id", async (req, res) => {
       return res.status(404).json({ error: "Message not found" });
     }
 
-    await message.remove();
+    await message.deleteOne();
 
     res.json({ message: "Message deleted", id });
   } catch (err) {
