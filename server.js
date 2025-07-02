@@ -119,12 +119,21 @@ if (urlMatch && urlMatch[0]) {
   const url = urlMatch[0];
 
   // 🧠 Витягнення YouTube ID
-  function extractYouTubeId(link) {
-    const match = link.match(
-      /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([^\s&?]+)/i
-    );
-    return match ? match[1] : null;
+ function extractYouTubeId(link) {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^\s&?/]+)/,         // звичайні відео
+    /youtube\.com\/embed\/([^\s&?/]+)/,                           // embed
+    /youtube\.com\/shorts\/([^\s&?/]+)/,                          // shorts
+    /youtube\.com\/live\/([^\s&?/]+)/,                            // live
+  ];
+
+  for (const pattern of patterns) {
+    const match = link.match(pattern);
+    if (match) return match[1];
   }
+
+  return null;
+}
 
   const ytId = extractYouTubeId(url);
 
